@@ -1,3 +1,45 @@
+    | BUGS / ERROR POINTS                                           								  |
+    |                                                                                                                             |
+    |6/8/2019  -->   According to the parser, there is no difference between a statement identifier and a variable identifier     |
+    |                Example:	#define x = 10                                                                                    |
+    |  			        DEBUG: IDENTIFIER definex PUSHED                                                                  |
+    |                                                                                                                             |
+    |                Possible Solution:                                                                                           | 
+    |				Variable statement_ident_collected is checked initially when checking statement identifier names, |
+    |				but is not checked before starting individual token parsing. Check the statement_ident_collected  |
+    |				variable as a condition of starting the individual token parser switch.                           |
+    |
+    |6/8/2019  -->   Newline causes identifier parse failure -- second statement will not push identifier properly. Example:
+    |
+    |                   #define x = 10
+    |			DEBUG: IDENTIFIER definex PUSHED
+    |			#define y = 20
+    |			DEBUG: IDENTIFIER  PUSHED
+    |                
+    |                Possible Solution:
+    |                          No possible solution has been discovered yet -_-
+    |                  
+    |6/8/2019  -->   Multiple Hashes will cause parser failure -- Example:
+    |
+    | 			# # hi hi
+    |			# # define x = 10 
+    |			DEBUG: IDENTIFIER     hihi  definex PUSHED
+    |
+    |                Possible Solution:
+    | 				No possible solution has been discovered yet -_-
+    |
+    |6/8/2019  -->   Using multiple '=' characters anywhere within any statement will cause the previous word to be pushed 
+    |		     as if it is a variable identifier. 
+    |		     Example:
+    |			  
+    |			#define x = = = 3
+    |			DEBUG: IDENTIFIER definex PUSHED
+    |			DEBUG: IDENTIFIER  PUSHED
+    |			DEBUG: IDENTIFIER  PUSHED
+    |______________________________________________________________________________________________________________________________
+
+
+     _____________________________________________________________________________________________________________________________
     | STATEMENT/IDENTIFIER GENERAL STACK CONVENTION                                                                               |
     |                                                                                                                             |
     | * Statement Type will be pushed onto the stack first                                                                        |
@@ -92,8 +134,9 @@
     |          > otherwise if stringcompare(cbuf, "include")                                                                      |
     |            * Empty cbuf, reset bufcnt                                                                                       |
     |            * set inclusion = true                                                                                           |
-    |          
+    |                                                                                                                             |
     |          > otherwise
+    |            * Do nothing
     |
     |  > IF beginning-of-statement variable is raised
     |   * Begin parsing for control chars    
