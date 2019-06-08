@@ -1,0 +1,147 @@
+    | STATEMENT/IDENTIFIER GENERAL STACK CONVENTION                                                                               |
+    |                                                                                                                             |
+    | * Statement Type will be pushed onto the stack first                                                                        |
+    | * IF DEFINE:                                                                                                                |
+    |     -> Identifier will be pushed second                                                                                     |
+    |     -> Value will be pushed third (VALUE WILL BE POPPED FIRST, THEN NAME. statement type identifier should not be popped)   |
+    | * IF INCLUDE:                                                                                                               |
+    |     -> Filename will be pushed second                                                                                       |
+    |_____________________________________________________________________________________________________________________________|
+
+
+     ______________________________________________________________________________________________________________________________
+    |VARIABLES_____________________________________________________________________________________________________________________|
+    |                                                                                                                              |
+    / -- TEXT PROCESSING-RELATED VARS -------------------------------------------------------------------------------------------- \
+    |GLOBAL - text      - (*CHAR[])-- HOLDS THE FILE SPLIT UP INTO LINES                                                           | 
+    |PRIVATE- line      - (CHAR*  )-- HOLDS THE CURRENT LINE TO BE PARSED                                                          |
+    |PRIVATE- cbuf      - (CHAR*  )-- HOLDS COLLECTED CHARACTERS (For identifiers/statements)                                      |
+    |PRIVATE- cbufcnt     - (INT    )-- HOLDS NUMBER OF CHARACTERS IN THE IDENT BUFFER                                             |
+    |PRIVATE- Char      - (CHAR   )-- HOLDS CURRENT CHARACTER BEING PARSED                                                         |
+    |PRIVATE- statement   - (BOOL   )-- INDICATES WHETHER CURRENT LINE IS A STATEMENT                                              |
+    |                                                                                                                              |
+    / -- LOCAL DEFINE VARS --------------------------------------------------------------------------------------------------------\
+    |PRIVATE- def_ident    -(BOOL   )-- INDICATES WHETHER AN IDENTIFIER IS BEING COLLECTED FOR A DEFINE STATEMENT                  |
+    |PRIVATE- def_value    -(BOOL   )-- INDICATES WHETHER A VALUE IS BEING COLLECTED FOR A DEFINE STATEMENT                        |
+    |PRIVATE- def_assignment-(BOOL   )-- INDICATES WHETHER CURRENT STATEMENT IS AN ASSIGNMENT                                      |
+    |                                                                                                                              |
+    / -- WORD-RELATED VARS ------------------------------------------------------------------------------------------------------- \
+    |GLOBAL- wstack        - (*CHAR[])-- MAIN WORD STACK, WILL HOLD IDENTIFIERS, VALUES, AND FILENAMES                             |
+    |GLOBAL- wstackp       - (INT    )-- NUMBER OF WORDS ON THE WORD STACK                                                         |
+    |PRIVATE- inword       - (BOOL   )-- INDICATES WHETHER PARSER IS INSIDE OR OUTSIDE A WORD                                      |
+    |                                                                                                                              |
+    / -- INCLUDE VARS -------------------------------------------------------------------------------------------------------------\
+    |PRIVATE- inc_inclusion - (BOOL   )-- INDICATES WHETHER CURRENT STATEMENT IS A FILE INCLUSION                                  |
+    |PRIVATE- inc_filename  - (BOOL   )-- INDICATES WHETHER A FILENAME IS BEING COLLECTED FOR AN INCLUDE STATEMENT                 |
+    |                                                                                                                              |
+    / -- MISC VARS ----------------------------------------------------------------------------------------------------------------\
+    |PRIVATE- bol          -  (BOOL   )-- INDICATES WHETHER WE'RE AT THE BEGINNING OF A LINE OF INPUT                              |
+    |______________________________________________________________________________________________________________________________|
+
+
+     _______________________________________________STRUCTURE OF A TOKEN___________________________________________________________
+    |  STRUCTURE OF A TOKEN (??)                                                                                                   |
+    |  IF LINKED LIST, LIST HEAD SHALL HOLD NULL VALUES EXCEPT FOR *next, which shall point to the first identifier in the list    |
+    |                                                                                                                              |
+    |  struct _token {                                                                                                             |
+    |      int token_type;      /* 1=DEFINITION, 2=INCLUSION */                                                                    |
+    |      char *identifier     /* Will hold identifier                                                                            |
+    |      char *value                                                                                                             |
+    |      bool isPrivate;      /* NON-PRIVATE=VAR IDENTIFIERS, VAR VALUES, FILE NAMES : PRIVATE=STATEMENT IDENTIFIERS ?? */       |
+    |      struct _token *next; /* Link tokens together via linked list ?? */                                                      |
+    |  }                                                                                                                           |
+    |______________________________________________________________________________________________________________________________|
+
+
+     _______________________________________________________    ____________________________________________________________________
+    |___________________READ_INPUT__________________________|  |___________________________READ_STDIN______________________________|
+    |                                                       |  |                                                                   |
+    |>Text file is read character by character              |  | >Input is read character by character via stdin (term input)      |
+    |                                                       |  |                                                                   |
+    |  if character is newline                              |  |  PARSER/LEXER COMBO FUNCTION HANDLES ALL INPUT DIRECTLY.          |
+    | Increment lineno                                      |  |  STANDALONE FUNCTION FOR RETRIEVING TERMINAL INPUT IS NOT         |
+    | continue reading                                      |  |  REQUIRED.                                                        |
+    |                                                       |  |                                                                   |
+    |  if character is EOF                                  |  |                                                                   |
+    | done reading file                                     |  |                                                                   |
+    | break loop                                            |  |                                                                   |
+    |_______________________________________________________|  |___________________________________________________________________|
+   
+
+     _____________________________________________________________________________________________________________________________
+    |_____________________________PARSE_INPUT_____________________________________________________________________________________|
+    |>each line is parsed character by character                                                                                  |
+    |                                                                                                                             |
+    |  > Create, Initialize Variables                                                                                             |
+    |                                                                                                                             |
+    |  > IF character is an alphanumerical character, collect it in temporary buffer                                              |
+    |                                                                                                                             |
+    |  > IF current character equals a '#'                                                                                        |
+    |  ! AND is first non-whitespace character                                                                                    |
+    |      * statement=true                                                                                                       |
+    |   * Skip char (do not collect(re-get current char using char=getch() or re-issuing collection function))                    |
+    |                                                                                                                             |
+    |  > ELSE IF current character is whitespace                                                                                  |
+    |        * Skip char (do not collect (re-get current char using char=getch() or re-issuing collection function))              |
+    |        > if inword = true                                                                                                   |
+    |          > if stringcompare(cbuf, "define")                                                                                 |
+    |            * Empty cbuf, reset bufcnt                                                                                       |
+    |            * set def_ident = true                                                                                           |
+    |            * set assignment = true                                                                                          |
+    |                                                                                                                             |
+    |          > otherwise if stringcompare(cbuf, "include")                                                                      |
+    |            * Empty cbuf, reset bufcnt                                                                                       |
+    |            * set inclusion = true                                                                                           |
+    |          
+    |          > otherwise
+    |
+    |  > IF beginning-of-statement variable is raised
+    |   * Begin parsing for control chars    
+    |    
+    |     () Start Switch on Current_Char
+    |         ------------PROBLEM POINT-------------------------------------------------------------------------
+    |          > Case of '=' Character
+    |
+    | > if assignment = true
+    |                * Push contents of cbuf onto wstack
+    |                * Empty cbuf, reset bufcnt
+    |
+    |            > otherwise
+    |                * print syntax error such as "Erraneous '=' Parsed {line [x]|char [y]}"
+    |         --------------------------------------------------------------------------------------------------
+    |         > Case of '\n' Character (CAN BE MODIFIED TO HANDLE BACKSLASH MULTI-LINE STATEMENT SUPPORT)
+    |        
+    | > if inc_filename=true
+    |             * Print error message such as "Incomplete Include statement {line [x]|char [y]}"
+    |          
+    |           > or if def_assignment = true
+    |             * Print error message such as "Incomplete assignment {line [x]|char [y]}"
+    |          
+    |           > otherwise
+    |             * set bol = true to indicate we're returning to the beginning of a line of input
+    |             *
+    |         --------------------------------------------------------------------------------------------------
+    |         > Case of '<' Character
+    | * Skip character    
+    |
+    | > if stringcompare(char buffer, "include") is true
+    |    * Empty cbuf, reset bufcnt
+    |    * set filename=true
+    |    
+    |     > otherwise print syntax error such as "Erraneous '<' Parsed {line [x]|char [y]}\n"
+    |         --------------------------------------------------------------------------------------------------
+    |      > Case of '>' Character
+    | * Skip character
+    |
+    | > if filename=true
+    |    * push cbuf onto word stack
+    |    * empty cbuf and reset
+    |        
+    |         --------------------------------------------------------------------------------------------------
+    |      > Default Action
+    | > If character is alphanumerical,
+    |        * collect it in wbuf
+    |           > otherwise
+    |               * continue() loop         
+
+
