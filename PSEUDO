@@ -1,19 +1,19 @@
-    | BUGS / ERROR POINTS                                           								  |
+    | BUGS / ERROR POINTS                                           								                              |
     |                                                                                                                             |
     |6/8/2019  -->   According to the parser, there is no difference between a statement identifier and a variable identifier     |
     |                Example:	#define x = 10                                                                                    |
-    |  			        DEBUG: IDENTIFIER definex PUSHED                                                                  |
+    |  			        DEBUG: IDENTIFIER definex PUSHED                                                                          |
     |                                                                                                                             |
     |                Possible Solution:                                                                                           | 
-    |				Variable statement_ident_collected is checked initially when checking statement identifier names, |
-    |				but is not checked before starting individual token parsing. Check the statement_ident_collected  |
-    |				variable as a condition of starting the individual token parser switch.                           |
-    |
-    |6/8/2019  -->   Newline causes identifier parse failure -- second statement will not push identifier properly. Example:
-    |
-    |                   #define x = 10
-    |			DEBUG: IDENTIFIER definex PUSHED
-    |			#define y = 20
+    |				Variable statement_ident_collected is checked initially when checking statement identifier names,             |
+    |				but is not checked before starting individual token parsing. Check the statement_ident_collected              |
+    |				variable as a condition of starting the individual token parser switch.                                       |
+    |                                                                                                                             |
+    |6/8/2019  -->   Newline causes identifier parse failure -- second statement will not push identifier properly. Example:      |
+    |                                                                                                                             |
+    |                   #define x = 10                                                                                            |
+    |			DEBUG: IDENTIFIER definex PUSHED                                                                                  |
+    |			#define y = 20                                                                                
     |			DEBUG: IDENTIFIER  PUSHED
     |                
     |                Possible Solution:
